@@ -1,0 +1,122 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.Date;
+import java.util.HashMap;
+ 
+public class SecurityDAO { //DAO = Data Access Object; this DAO handles interaction with Yahoo Finance AP
+  
+    private static final SecurityDAO stockDAO = new SecurityDAO();
+    private static HashMap<String, Security> stocks = new HashMap<String, Security>();
+    private static final long TWENTY_MIN = 1200000;
+ 
+    private SecurityDAO() {}
+ 
+    public static SecurityDAO getInstance() {
+        return stockDAO;
+    }
+ 
+   
+    public Security getStockPrice(String symbol) {
+        Security stock;
+        long currentTime = (new Date()).getTime();
+        // Check last updated and only pull stock on average every 20 minutes
+        if (stocks.containsKey(symbol)) {
+            stock = stocks.get(symbol);
+            if(currentTime - stock.getLastUpdated() > TWENTY_MIN) {
+                stock = refreshStockInfo(symbol, currentTime);
+            }
+        } else {
+            stock = refreshStockInfo(symbol, currentTime);
+        }
+        return stock;
+    }
+ 
+    //This is synched so we only do one request at a time
+    //If yahoo doesn't return stock info we will try to return it from the map in memory
+    private synchronized Security refreshStockInfo(String symbol, long time) {
+        try {
+            URL yahoofin = new URL("http://finance.yahoo.com/d/quotes.csv?s=" + symbol + "&f=sl&e=.csv");
+        	URLConnection yc = yahoofin.openConnection();
+            BufferedReader in = new BufferedReader(new InputStreamReader(yc.getInputStream()));
+            String inputLine;
+            Security stockInfo = new Stock();
+            while ((inputLine = in.readLine()) != null) {
+                String[] yahooStockInfo = inputLine.split(",");
+                stockInfo.setTicker(yahooStockInfo[0].replaceAll("\"", ""));
+                stockInfo.setPrice(Float.valueOf(yahooStockInfo[1]));
+                stockInfo.setDate(yahooStockInfo[2].replaceAll("\"", ""));
+                break;
+            }
+            in.close();
+            
+            //update 1-month price
+            String m1 = stockInfo.getDate();
+            String ss1 = m1.substring(0, 2);
+            String ss2 = m1.substring(3, 5);
+            String ss3 = m1.substring(6, 10);
+            int mnum1 = Integer.parseInt(ss1) - 2; //current month - 2
+            int dnum1 = Integer.parseInt(ss2);
+            int ynum1 = Integer.parseInt(ss3);
+            URL yahoofin2 = new URL("http://ichart.yahoo.com/table.csv?s=" + symbol + 
+            		"&a=" + mnum1 + "&b=" + dnum1 + "&c=" + ynum1 + "&d=" + mnum1 + 
+            		"&e=" + dnum1 + "&f=" + ynum1 + "&g=w&ignore=.csv");
+           
+            URLConnection yc2 = yahoofin2.openConnection();
+            BufferedReader in2 = new BufferedReader(new InputStreamReader(yc2.getInputStream()));
+            String inputLine2;
+            int checkline = 0;
+            while ((inputLine2 = in2.readLine()) != null) {
+            	
+                String[] yahooStockInfo = inputLine2.split(",");
+                if (checkline==1) {stockInfo.setMonthPrice(Float.valueOf(yahooStockInfo[4]));}
+                checkline++;
+               
+            }
+            in2.close();
+            
+            //update 6 month price
+            int mnum2 = Integer.parseInt(ss1) - 7; //current month - 7
+           
+            URL yahoofin3 = new URL("http://ichart.yahoo.com/table.csv?s=" + symbol + 
+            		"&a=" + mnum2 + "&b=" + dnum1 + "&c=" + ynum1 + "&d=" + mnum2 + 
+            		"&e=" + dnum1 + "&f=" + ynum1 + "&g=w&ignore=.csv");
+            URLConnection yc3 = yahoofin3.openConnection();
+            BufferedReader in3 = new BufferedReader(new InputStreamReader(yc3.getInputStream()));
+            String inputLine3;
+            int checkline2 = 0;
+            while ((inputLine3 = in3.readLine()) != null) {
+            	
+                String[] yahooStockInfo = inputLine3.split(",");
+                if (checkline2==1) {stockInfo.setHalfYPrice(Float.valueOf(yahooStockInfo[4]));}
+                checkline2++;
+               
+            }
+            in3.close();
+            
+            //update year price
+            int ynum2 = ynum1 - 1;
+            int mnum3 = mnum1 + 1;           
+            URL yahoofin4 = new URL("http://ichart.yahoo.com/table.csv?s=" + symbol + 
+            		"&a=" + mnum3 + "&b=" + dnum1 + "&c=" + ynum2 + "&d=" + mnum3 + 
+            		"&e=" + dnum1 + "&f=" + ynum2 + "&g=w&ignore=.csv");
+            URLConnection yc4 = yahoofin4.openConnection();
+            BufferedReader in4 = new BufferedReader(new InputStreamReader(yc4.getInputStream()));
+            String inputLine4;
+            int checkline3 = 0;
+            while ((inputLine4 = in4.readLine()) != null) {
+            	
+                String[] yahooStockInfo = inputLine4.split(",");
+                if (checkline3==1) {stockInfo.setYPrice(Float.valueOf(yahooStockInfo[4]));}
+                checkline3++;
+               
+            }
+            in4.close();
+            stocks.put(symbol, stockInfo);
+        } catch (Exception ex) {
+        }
+        return stocks.get(symbol);
+     }
+    
+    }
