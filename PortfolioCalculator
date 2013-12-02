@@ -1,0 +1,48 @@
+import java.util.ArrayList;
+
+
+public class PortfolioCalculator {
+	
+	public float monthreturn;
+	public float halfyreturn;
+	public float yreturn;
+	
+	public PortfolioCalculator(Portfolio p){
+		ArrayList<Security> list = p.getSecurityList();
+		int list_size = list.size();
+		monthreturn = 0;
+		halfyreturn = 0;
+		yreturn = 0;
+		for (Security s : list){
+			float m = (s.getPrice() - s.getMonthPrice())/s.getMonthPrice(); //security's 1-month return
+			float hy = (s.getPrice() - s.getHalfYPrice())/s.getPrice(); //security's 6-month return
+			float y = (s.getPrice() - s.getYPrice())/s.getYPrice(); //security's 1-year return
+			
+			//s.setMonthReturn(m); //add float monthreturn field to Security and its setter/getter
+			//s.setHalfYReturn(hy); //add float halfyreturn field to Security and its setter/getter
+			//s.setYReturn(y); //add float yreturn field to Security and its setter/getter
+			
+			m = (float) m*s.getWeight(); //weight should be a double or float, getWeight() should return a double or a float
+			hy = (float) hy*s.getWeight();
+			y = (float) y*s.getWeight();
+			
+			monthreturn = monthreturn + m;
+			halfyreturn = halfyreturn + hy;
+			yreturn = yreturn + y;
+		}
+		
+		
+	}
+	
+	public float getMonthReturn() {
+        return monthreturn;
+}
+	public float getHalfYReturn() {
+        return halfyreturn;
+}
+	public float getYReturn() {
+        return yreturn;
+}
+	
+
+}
